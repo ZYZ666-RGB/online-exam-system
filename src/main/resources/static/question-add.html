@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题目编辑</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("questions");
+const params = new URLSearchParams(location.search);
+const questionId = params.get("id");
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>${questionId ? "编辑题目" : "新增题目"}</h1><p class="muted">多选题答案统一使用 A,B,C 格式。</p></div>
+    <section class="panel">
+        <div class="form-grid">
+            <div class="form-row"><label>题型</label><select id="questionType"><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option></select></div>
+            <div class="form-row"><label>难度</label><select id="difficulty"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select></div>
+            <div class="form-row"><label>默认分值</label><input id="defaultScore" type="number" value="10"></div>
+            <div class="form-row"><label>知识点</label><input id="knowledgePoint"></div>
+        </div>
+        <div class="form-row"><label>题干</label><textarea id="title"></textarea></div>
+        <div class="form-grid">
+            <div class="form-row"><label>A选项</label><input id="optionA"></div>
+            <div class="form-row"><label>B选项</label><input id="optionB"></div>
+            <div class="form-row"><label>C选项</label><input id="optionC"></div>
+            <div class="form-row"><label>D选项</label><input id="optionD"></div>
+            <div class="form-row"><label>正确答案</label><input id="correctAnswer" placeholder="A 或 A,B,C"></div>
+        </div>
+        <div class="form-row"><label>解析</label><textarea id="analysis"></textarea></div>
+        <div id="status" class="status"></div>
+        <button onclick="saveQuestion()">保存</button>
+        <a class="button secondary" href="question-list.html">返回</a>
+    </section>
+`;
+
+async function loadQuestion() {
+    if (!questionId) return;
+    const q = await request(`/questions/${questionId}`);
+    ["questionType", "difficulty", "defaultScore", "knowledgePoint", "title", "optionA", "optionB", "optionC", "optionD", "correctAnswer", "analysis"]
+        .forEach(id => document.getElementById(id).value = q[id] || "");
+}
+
+async function saveQuestion() {
+    const body = {
+        questionType: document.getElementById("questionType").value,
+        difficulty: document.getElementById("difficulty").value,
+        defaultScore: Number(document.getElementById("defaultScore").value),
+        knowledgePoint: document.getElementById("knowledgePoint").value,
+        title: document.getElementById("title").value,
+        optionA: document.getElementById("optionA").value,
+        optionB: document.getElementById("optionB").value,
+        optionC: document.getElementById("optionC").value,
+        optionD: document.getElementById("optionD").value,
+        correctAnswer: document.getElementById("correctAnswer").value,
+        analysis: document.getElementById("analysis").value
+    };
+    try {
+        await request(questionId ? `/questions/${questionId}` : "/questions", {
+            method: questionId ? "PUT" : "POST",
+            body: JSON.stringify(body)
+        });
+        setStatus("保存成功");
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+
+loadQuestion();
+</script>
+</body>
+</html>

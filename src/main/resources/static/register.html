@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 在线考试系统</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-page">
+<section class="auth-panel">
+    <h1>学生注册</h1>
+    <p class="muted">普通注册默认绑定 STUDENT 角色，教师和管理员由初始化数据创建。</p>
+    <div class="form-row">
+        <label>用户名</label>
+        <input id="username" placeholder="4-20位字母、数字或下划线" autocomplete="username">
+    </div>
+    <div class="form-row">
+        <label>真实姓名</label>
+        <input id="realName" autocomplete="name">
+    </div>
+    <div class="form-row">
+        <label>邮箱</label>
+        <input id="email" type="email" autocomplete="email">
+    </div>
+    <div class="form-row">
+        <label>密码</label>
+        <input id="password" type="password" placeholder="8-64位" autocomplete="new-password">
+    </div>
+    <div id="status" class="status"></div>
+    <div class="auth-actions">
+        <button onclick="register()">注册</button>
+        <a class="button secondary" href="login.html">返回登录</a>
+    </div>
+</section>
+<script src="js/api.js"></script>
+<script>
+async function register() {
+    try {
+        localStorage.removeItem("apiBase");
+        await request("/auth/register", {
+            method: "POST",
+            body: JSON.stringify({
+                username: document.getElementById("username").value,
+                realName: document.getElementById("realName").value,
+                email: document.getElementById("email").value,
+                password: document.getElementById("password").value
+            })
+        });
+        setStatus("注册成功，请返回登录");
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+</script>
+</body>
+</html>

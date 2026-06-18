@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.exam.mapper.QuestionMapper">
+
+    <resultMap id="QuestionMap" type="com.example.exam.entity.Question">
+        <id column="id" property="id"/>
+        <result column="question_type" property="questionType"/>
+        <result column="title" property="title"/>
+        <result column="option_a" property="optionA"/>
+        <result column="option_b" property="optionB"/>
+        <result column="option_c" property="optionC"/>
+        <result column="option_d" property="optionD"/>
+        <result column="correct_answer" property="correctAnswer"/>
+        <result column="analysis" property="analysis"/>
+        <result column="default_score" property="defaultScore"/>
+        <result column="difficulty" property="difficulty"/>
+        <result column="knowledge_point" property="knowledgePoint"/>
+        <result column="create_by" property="createBy"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="QuestionVOMap" type="com.example.exam.vo.QuestionVO">
+        <id column="id" property="id"/>
+        <result column="question_type" property="questionType"/>
+        <result column="title" property="title"/>
+        <result column="option_a" property="optionA"/>
+        <result column="option_b" property="optionB"/>
+        <result column="option_c" property="optionC"/>
+        <result column="option_d" property="optionD"/>
+        <result column="correct_answer" property="correctAnswer"/>
+        <result column="analysis" property="analysis"/>
+        <result column="default_score" property="defaultScore"/>
+        <result column="difficulty" property="difficulty"/>
+        <result column="knowledge_point" property="knowledgePoint"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_by_name" property="createByName"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="QuestionWhere">
+        WHERE q.status = 1
+        <if test="query.questionType != null and query.questionType != ''">
+            AND q.question_type = #{query.questionType}
+        </if>
+        <if test="query.difficulty != null and query.difficulty != ''">
+            AND q.difficulty = #{query.difficulty}
+        </if>
+        <if test="query.knowledgePoint != null and query.knowledgePoint != ''">
+            AND q.knowledge_point LIKE CONCAT('%', #{query.knowledgePoint}, '%')
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND q.title LIKE CONCAT('%', #{query.keyword}, '%')
+        </if>
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO exam_system.question (
+            question_type, title, option_a, option_b, option_c, option_d,
+            correct_answer, analysis, default_score, difficulty, knowledge_point, create_by, status
+        ) VALUES (
+            #{questionType}, #{title}, #{optionA}, #{optionB}, #{optionC}, #{optionD},
+            #{correctAnswer}, #{analysis}, #{defaultScore}, #{difficulty}, #{knowledgePoint}, #{createBy}, #{status}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE exam_system.question
+        SET question_type = #{questionType},
+            title = #{title},
+            option_a = #{optionA},
+            option_b = #{optionB},
+            option_c = #{optionC},
+            option_d = #{optionD},
+            correct_answer = #{correctAnswer},
+            analysis = #{analysis},
+            default_score = #{defaultScore},
+            difficulty = #{difficulty},
+            knowledge_point = #{knowledgePoint}
+        WHERE id = #{id}
+          AND status = 1
+    </update>
+
+    <update id="logicalDelete">
+        UPDATE exam_system.question
+        SET status = 0
+        WHERE id = #{id}
+          AND status = 1
+    </update>
+
+    <select id="selectById" resultMap="QuestionMap">
+        SELECT id, question_type, title, option_a, option_b, option_c, option_d,
+               correct_answer, analysis, default_score, difficulty, knowledge_point,
+               create_by, status, create_time, update_time
+        FROM exam_system.question
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectDetailById" resultMap="QuestionVOMap">
+        SELECT q.id, q.question_type, q.title, q.option_a, q.option_b, q.option_c, q.option_d,
+               q.correct_answer, q.analysis, q.default_score, q.difficulty, q.knowledge_point,
+               q.create_by, u.real_name AS create_by_name, q.status, q.create_time, q.update_time
+        FROM exam_system.question q
+        JOIN exam_system.sys_user u ON q.create_by = u.id
+        WHERE q.id = #{id}
+    </select>
+
+    <select id="countByQuery" resultType="long">
+        SELECT COUNT(1)
+        FROM exam_system.question q
+        <include refid="QuestionWhere"/>
+    </select>
+
+    <select id="selectPage" resultMap="QuestionVOMap">
+        SELECT q.id, q.question_type, q.title, q.option_a, q.option_b, q.option_c, q.option_d,
+               q.correct_answer, q.analysis, q.default_score, q.difficulty, q.knowledge_point,
+               q.create_by, u.real_name AS create_by_name, q.status, q.create_time, q.update_time
+        FROM exam_system.question q
+        JOIN exam_system.sys_user u ON q.create_by = u.id
+        <include refid="QuestionWhere"/>
+        ORDER BY q.create_time DESC, q.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+</mapper>
+

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>试卷组题</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("papers");
+const paperId = new URLSearchParams(location.search).get("id");
+let currentPaper = null;
+let selectedQuestionCount = 0;
+let selectedTotalScore = 0;
+let nextSortOrder = 1;
+let selectedQuestionIds = new Set();
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>试卷组题</h1><p id="paperInfo" class="muted"></p></div>
+    <section class="panel">
+        <div class="action-bar">
+            <div>
+                <h3>组题进度</h3>
+                <p class="muted">添加或移除题目会实时保存。确认题目和分值无误后，点击“完成组题并发布”才算完成试卷。</p>
+            </div>
+            <div class="actions">
+                <a class="button secondary" href="paper-list.html">返回试卷管理</a>
+                <button id="publishBtn" onclick="publishCurrentPaper(this)">完成组题并发布</button>
+            </div>
+        </div>
+        <div id="status" class="status"></div>
+    </section>
+    <section class="panel">
+        <h3>已选题目</h3>
+        <p id="selectedSummary" class="muted"></p>
+        <table><thead><tr><th>排序</th><th>题干</th><th>分值</th><th>答案</th><th>操作</th></tr></thead><tbody id="selectedRows"></tbody></table>
+    </section>
+    <section class="panel">
+        <h3>从题库添加</h3>
+        <div class="toolbar">
+            <div class="form-row"><label>题型</label><select id="questionType"><option value="">全部</option><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option></select></div>
+            <button onclick="loadQuestions()">查询</button>
+        </div>
+        <table><thead><tr><th>ID</th><th>题干</th><th>默认分</th><th>本卷分值</th><th>操作</th></tr></thead><tbody id="questionRows"></tbody></table>
+    </section>
+`;
+
+async function loadPaper() {
+    currentPaper = await request(`/papers/${paperId}`);
+    document.getElementById("paperInfo").textContent = `${currentPaper.paperName} ｜ 状态：${["草稿","已发布","已结束"][currentPaper.status] || currentPaper.status} ｜ 及格分：${currentPaper.passScore}`;
+    renderPublishState();
+}
+
+async function loadSelected() {
+    const [paper, rows] = await Promise.all([
+        currentPaper ? Promise.resolve(currentPaper) : request(`/papers/${paperId}`),
+        request(`/papers/${paperId}/questions`)
+    ]);
+    currentPaper = paper;
+    selectedQuestionCount = rows.length;
+    selectedTotalScore = rows.reduce((sum, q) => sum + Number(q.questionScore || 0), 0);
+    selectedQuestionIds = new Set(rows.map(q => Number(q.questionId)));
+    nextSortOrder = rows.length
+        ? Math.max(...rows.map(q => Number(q.sortOrder || 0))) + 1
+        : 1;
+    const summary = document.getElementById("selectedSummary");
+    summary.className = selectedTotalScore < paper.passScore ? "status err" : "status ok";
+    summary.textContent = selectedTotalScore < paper.passScore
+        ? `已选 ${rows.length} 题，当前组题总分 ${selectedTotalScore} 分，低于及格分 ${paper.passScore} 分，暂不能发布。`
+        : `已选 ${rows.length} 题，当前组题总分 ${selectedTotalScore} 分，满足及格分 ${paper.passScore} 分。发布时会用该总分更新试卷总分。`;
+    document.getElementById("selectedRows").innerHTML = rows.map(q => `
+        <tr>
+            <td>${q.sortOrder}</td>
+            <td>${escapeHtml(q.title)}</td>
+            <td><input class="score-input" id="selectedScore_${q.questionId}" type="number" min="1" max="100" value="${q.questionScore}" ${paper.status !== 0 ? "disabled" : ""}></td>
+            <td>${q.correctAnswer}</td>
+            <td class="actions">
+                <button class="secondary" onclick="updateQuestionScore(${q.questionId})" ${paper.status !== 0 ? "disabled" : ""}>保存分值</button>
+                <button class="danger" onclick="removeQuestion(${q.questionId})" ${paper.status !== 0 ? "disabled" : ""}>移除</button>
+            </td>
+        </tr>
+    `).join("");
+    renderPublishState();
+}
+
+async function loadQuestions() {
+    const data = await request("/questions" + qs({ questionType: document.getElementById("questionType").value, pageSize: 50 }));
+    document.getElementById("questionRows").innerHTML = data.records.map(q => `
+        <tr><td>${q.id}</td><td>${escapeHtml(q.title)}</td><td>${q.defaultScore}</td>
+        <td><input class="score-input" id="score_${q.id}" type="number" min="1" max="100" value="${q.defaultScore}" ${currentPaper && currentPaper.status !== 0 || selectedQuestionIds.has(Number(q.id)) ? "disabled" : ""}></td>
+        <td><button onclick="addQuestion(${q.id})" ${currentPaper && currentPaper.status !== 0 || selectedQuestionIds.has(Number(q.id)) ? "disabled" : ""}>${selectedQuestionIds.has(Number(q.id)) ? "已添加" : "添加"}</button></td></tr>
+    `).join("");
+}
+
+function readPositiveInt(id, label) {
+    const value = Number(document.getElementById(id).value);
+    if (!Number.isInteger(value) || value <= 0) {
+        throw new Error(`${label}必须是大于0的整数`);
+    }
+    if (value > 100) {
+        throw new Error(`${label}不能超过100`);
+    }
+    return value;
+}
+
+async function addQuestion(questionId) {
+    if (currentPaper && currentPaper.status !== 0) {
+        setStatus("已发布试卷不能继续组题", false);
+        return;
+    }
+    try {
+        const questionScore = readPositiveInt(`score_${questionId}`, "题目分值");
+        const sortOrder = nextSortOrder;
+        await request(`/papers/${paperId}/questions`, { method: "POST", body: JSON.stringify({ questionId, questionScore, sortOrder }) });
+        setStatus(`题目已添加到第 ${sortOrder} 题，组题已自动保存`);
+        await loadSelected();
+        await loadQuestions();
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+
+async function updateQuestionScore(questionId) {
+    if (currentPaper && currentPaper.status !== 0) {
+        setStatus("已发布试卷不能修改分值", false);
+        return;
+    }
+    try {
+        const questionScore = readPositiveInt(`selectedScore_${questionId}`, "题目分值");
+        await request(`/papers/${paperId}/questions/${questionId}`, {
+            method: "PUT",
+            body: JSON.stringify({ questionScore })
+        });
+        setStatus("分值已保存，组题总分已更新");
+        await loadSelected();
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+
+async function removeQuestion(questionId) {
+    if (currentPaper && currentPaper.status !== 0) {
+        setStatus("已发布试卷不能移除题目", false);
+        return;
+    }
+    try {
+        await request(`/papers/${paperId}/questions/${questionId}`, { method: "DELETE" });
+        setStatus("题目已移除，组题已自动保存");
+        await loadSelected();
+        await loadQuestions();
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+
+function renderPublishState() {
+    const button = document.getElementById("publishBtn");
+    if (!button || !currentPaper) return;
+    if (currentPaper.status === 1) {
+        button.disabled = true;
+        button.textContent = "试卷已发布";
+    } else if (currentPaper.status !== 0) {
+        button.disabled = true;
+        button.textContent = "不可发布";
+    } else {
+        button.disabled = false;
+        button.textContent = "完成组题并发布";
+    }
+}
+
+async function publishCurrentPaper(button) {
+    if (!currentPaper) return;
+    if (currentPaper.status !== 0) {
+        setStatus("只有草稿试卷可以发布", false);
+        return;
+    }
+    if (selectedQuestionCount === 0) {
+        setStatus("试卷至少需要包含一道题目", false);
+        return;
+    }
+    if (selectedTotalScore < currentPaper.passScore) {
+        setStatus(`当前组题总分 ${selectedTotalScore} 分，低于及格分 ${currentPaper.passScore} 分，不能发布。`, false);
+        return;
+    }
+    if (!confirm("发布后不能继续修改组题，确认完成组题并发布？")) return;
+    try {
+        button.disabled = true;
+        button.textContent = "发布中";
+        await request(`/papers/${paperId}/publish`, { method: "PUT" });
+        setStatus("发布成功，试卷已完成");
+        await loadPaper();
+        await loadSelected();
+        await loadQuestions();
+    } catch (e) {
+        setStatus(e.message, false);
+        renderPublishState();
+    }
+}
+
+async function initPage() {
+    try {
+        await loadPaper();
+        await loadSelected();
+        await loadQuestions();
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+
+initPage();
+</script>
+</body>
+</html>

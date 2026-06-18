@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的成绩</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("scores");
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>我的成绩</h1><p class="muted">成绩数据来自 v_student_score 视图。</p></div>
+    <section class="panel">
+        <table><thead><tr><th>试卷</th><th>得分</th><th>及格分</th><th>是否及格</th><th>提交时间</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+    <section class="panel"><h3>考试详情</h3><div id="detail"></div></section>
+`;
+
+async function loadScores() {
+    const rows = await request("/exams/my-scores");
+    document.getElementById("rows").innerHTML = rows.map(r => `
+        <tr><td>${escapeHtml(r.paperName)}</td><td>${r.totalScore}</td><td>${r.passScore}</td><td><span class="pill ${r.isPass === 1 ? "success" : "danger"}">${r.isPass === 1 ? "及格" : "未及格"}</span></td><td>${escapeHtml(r.submitTime)}</td>
+        <td><button class="secondary" onclick="loadDetail(${r.examId})">查看详情</button></td></tr>
+    `).join("");
+}
+
+async function loadDetail(examId) {
+    const detail = await request(`/exams/${examId}/detail`);
+    document.getElementById("detail").innerHTML = detail.answers.map((a, index) => `
+        <div class="question-block">
+            <strong>${index + 1}. ${escapeHtml(a.questionTitleSnapshot)}</strong>
+            <p class="muted">${escapeHtml(a.optionSnapshot)}</p>
+            <p>我的答案：${escapeHtml(a.studentAnswer)} ｜ 正确答案：${escapeHtml(a.correctAnswerSnapshot)} ｜ 得分：${a.score} ｜ <span class="pill ${a.isCorrect === 1 ? "success" : "danger"}">${a.isCorrect === 1 ? "正确" : "错误"}</span></p>
+        </div>
+    `).join("");
+}
+
+loadScores();
+</script>
+</body>
+</html>

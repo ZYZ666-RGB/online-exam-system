@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>试卷管理</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("papers");
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>试卷管理</h1><p class="muted">试卷与题目通过 paper_question 中间表建立多对多关系。</p></div>
+    <section class="panel">
+        <div class="toolbar">
+            <div class="form-row"><label>试卷名称</label><input id="keyword"></div>
+            <div class="form-row"><label>状态</label><select id="statusFilter"><option value="">全部</option><option value="0">草稿</option><option value="1">已发布</option><option value="2">已结束</option></select></div>
+            <button onclick="loadPapers()">查询</button>
+            <a class="button" href="paper-add.html">创建试卷</a>
+        </div>
+        <div id="status" class="status"></div>
+        <table><thead><tr><th>ID</th><th>名称</th><th>总分</th><th>及格分</th><th>题数</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+`;
+
+async function loadPapers() {
+    try {
+        const data = await request("/papers" + qs({
+            keyword: document.getElementById("keyword").value,
+            status: document.getElementById("statusFilter").value,
+            pageSize: 50
+        }));
+        document.getElementById("rows").innerHTML = data.records.map(p => `
+            <tr>
+                <td>${p.id}</td><td>${escapeHtml(p.paperName)}</td><td>${p.totalScore}</td><td>${p.passScore}</td><td>${p.questionCount}</td>
+                <td><span class="pill ${p.status === 0 ? "warning" : p.status === 1 ? "success" : ""}">${["草稿","已发布","已结束"][p.status] || p.status}</span></td><td>${escapeHtml(p.startTime)}<br>${escapeHtml(p.endTime)}</td>
+                <td class="actions">
+                    <a class="button secondary" href="paper-question.html?id=${p.id}">组题</a>
+                    <button onclick="publishPaper(${p.id}, this)" ${p.status !== 0 ? "disabled" : ""}>发布</button>
+                </td>
+            </tr>
+        `).join("");
+        setStatus("");
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+
+async function publishPaper(id, button) {
+    if (!confirm("发布后不能继续修改组题，确认发布？")) return;
+    try {
+        if (button) {
+            button.disabled = true;
+            button.textContent = "发布中";
+        }
+        await request(`/papers/${id}/publish`, { method: "PUT" });
+        setStatus("发布成功");
+        await loadPapers();
+    } catch (e) {
+        setStatus(e.message, false);
+        if (button) {
+            button.disabled = false;
+            button.textContent = "发布";
+        }
+    }
+}
+
+loadPapers();
+</script>
+</body>
+</html>

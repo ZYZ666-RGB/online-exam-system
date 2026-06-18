@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师首页</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("teacher");
+document.getElementById("app").innerHTML = `
+    <div class="page-title">
+        <h1>教师工作台</h1>
+        <p class="muted">完成题库录入、试卷组题、发布考试和成绩统计。</p>
+    </div>
+    <div class="cards">
+        <a class="card" href="question-list.html"><h3>题库管理</h3><p class="muted">维护单选、多选、判断题。</p></a>
+        <a class="card" href="paper-list.html"><h3>试卷管理</h3><p class="muted">创建试卷、选择题目、发布考试。</p></a>
+        <a class="card" href="statistics.html"><h3>成绩统计</h3><p class="muted">查看参加人数和分数分布。</p></a>
+    </div>
+`;
+</script>
+</body>
+</html>

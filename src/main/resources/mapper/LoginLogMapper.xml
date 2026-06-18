@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.exam.mapper.LoginLogMapper">
+
+    <insert id="insert">
+        INSERT INTO exam_system.login_log (user_id, username, login_ip, login_status, fail_reason, login_time)
+        VALUES (#{userId}, #{username}, #{loginIp}, #{loginStatus}, #{failReason}, #{loginTime})
+    </insert>
+
+    <sql id="LoginLogWhere">
+        WHERE 1 = 1
+        <if test="query.username != null and query.username != ''">
+            AND username LIKE CONCAT('%', #{query.username}, '%')
+        </if>
+        <if test="query.loginStatus != null">
+            AND login_status = #{query.loginStatus}
+        </if>
+    </sql>
+
+    <select id="countByQuery" resultType="long">
+        SELECT COUNT(1)
+        FROM exam_system.login_log
+        <include refid="LoginLogWhere"/>
+    </select>
+
+    <select id="selectPage" resultType="com.example.exam.vo.LoginLogVO">
+        SELECT id, user_id AS userId, username, login_ip AS loginIp, login_status AS loginStatus,
+               fail_reason AS failReason, login_time AS loginTime
+        FROM exam_system.login_log
+        <include refid="LoginLogWhere"/>
+        ORDER BY login_time DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+</mapper>

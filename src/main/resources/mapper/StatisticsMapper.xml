@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.exam.mapper.StatisticsMapper">
+
+    <resultMap id="PaperStatisticsVOMap" type="com.example.exam.vo.PaperStatisticsVO">
+        <id column="paper_id" property="paperId"/>
+        <result column="paper_name" property="paperName"/>
+        <result column="participant_count" property="participantCount"/>
+        <result column="average_score" property="averageScore"/>
+        <result column="highest_score" property="highestScore"/>
+        <result column="lowest_score" property="lowestScore"/>
+    </resultMap>
+
+    <resultMap id="PaperExamRecordVOMap" type="com.example.exam.vo.PaperExamRecordVO">
+        <id column="exam_id" property="examId"/>
+        <result column="student_id" property="studentId"/>
+        <result column="student_name" property="studentName"/>
+        <result column="username" property="username"/>
+        <result column="total_score" property="totalScore"/>
+        <result column="pass_score" property="passScore"/>
+        <result column="is_pass" property="isPass"/>
+        <result column="start_time" property="startTime"/>
+        <result column="submit_time" property="submitTime"/>
+    </resultMap>
+
+    <select id="selectPaperStatistics" resultMap="PaperStatisticsVOMap">
+        SELECT p.id AS paper_id,
+               p.paper_name,
+               COUNT(er.id) AS participant_count,
+               COALESCE(ROUND(AVG(er.total_score), 2), 0) AS average_score,
+               COALESCE(MAX(er.total_score), 0) AS highest_score,
+               COALESCE(MIN(er.total_score), 0) AS lowest_score
+        FROM exam_system.paper p
+        LEFT JOIN exam_system.exam_record er ON er.paper_id = p.id AND er.status = 1
+        WHERE p.id = #{paperId}
+        GROUP BY p.id, p.paper_name
+    </select>
+
+    <select id="selectPaperRecords" resultMap="PaperExamRecordVOMap">
+        SELECT er.id AS exam_id,
+               er.student_id,
+               u.real_name AS student_name,
+               u.username,
+               er.total_score,
+               p.pass_score,
+               CASE WHEN er.total_score >= p.pass_score THEN 1 ELSE 0 END AS is_pass,
+               er.start_time,
+               er.submit_time
+        FROM exam_system.exam_record er
+        JOIN exam_system.sys_user u ON er.student_id = u.id
+        JOIN exam_system.paper p ON er.paper_id = p.id
+        WHERE er.paper_id = #{paperId}
+          AND er.status = 1
+        ORDER BY er.submit_time DESC, er.id DESC
+    </select>
+</mapper>
+

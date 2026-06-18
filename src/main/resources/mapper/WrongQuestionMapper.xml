@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.exam.mapper.WrongQuestionMapper">
+
+    <resultMap id="WrongQuestionVOMap" type="com.example.exam.vo.WrongQuestionVO">
+        <id column="id" property="id"/>
+        <result column="question_id" property="questionId"/>
+        <result column="exam_id" property="examId"/>
+        <result column="paper_name" property="paperName"/>
+        <result column="question_type" property="questionType"/>
+        <result column="title" property="title"/>
+        <result column="option_a" property="optionA"/>
+        <result column="option_b" property="optionB"/>
+        <result column="option_c" property="optionC"/>
+        <result column="option_d" property="optionD"/>
+        <result column="student_answer" property="studentAnswer"/>
+        <result column="correct_answer" property="correctAnswer"/>
+        <result column="analysis" property="analysis"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectByStudentId" resultMap="WrongQuestionVOMap">
+        SELECT wq.id, wq.question_id, wq.exam_id, p.paper_name,
+               q.question_type, q.title, q.option_a, q.option_b, q.option_c, q.option_d,
+               wq.student_answer, wq.correct_answer, q.analysis, wq.create_time
+        FROM exam_system.wrong_question wq
+        JOIN exam_system.question q ON wq.question_id = q.id
+        JOIN exam_system.exam_record er ON wq.exam_id = er.id
+        JOIN exam_system.paper p ON er.paper_id = p.id
+        WHERE wq.student_id = #{studentId}
+        ORDER BY wq.create_time DESC, wq.id DESC
+    </select>
+</mapper>
+

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.exam.mapper.PaperMapper">
+
+    <resultMap id="PaperMap" type="com.example.exam.entity.Paper">
+        <id column="id" property="id"/>
+        <result column="paper_name" property="paperName"/>
+        <result column="duration" property="duration"/>
+        <result column="total_score" property="totalScore"/>
+        <result column="pass_score" property="passScore"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="PaperVOMap" type="com.example.exam.vo.PaperVO">
+        <id column="id" property="id"/>
+        <result column="paper_name" property="paperName"/>
+        <result column="duration" property="duration"/>
+        <result column="total_score" property="totalScore"/>
+        <result column="pass_score" property="passScore"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_by_name" property="createByName"/>
+        <result column="question_count" property="questionCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="PaperQuestionVOMap" type="com.example.exam.vo.PaperQuestionVO">
+        <id column="id" property="id"/>
+        <result column="paper_id" property="paperId"/>
+        <result column="question_id" property="questionId"/>
+        <result column="question_type" property="questionType"/>
+        <result column="title" property="title"/>
+        <result column="option_a" property="optionA"/>
+        <result column="option_b" property="optionB"/>
+        <result column="option_c" property="optionC"/>
+        <result column="option_d" property="optionD"/>
+        <result column="correct_answer" property="correctAnswer"/>
+        <result column="analysis" property="analysis"/>
+        <result column="question_score" property="questionScore"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="difficulty" property="difficulty"/>
+        <result column="knowledge_point" property="knowledgePoint"/>
+    </resultMap>
+
+    <sql id="PaperColumns">
+        p.id, p.paper_name, p.duration, p.total_score, p.pass_score, p.start_time, p.end_time,
+        p.status, p.create_by, u.real_name AS create_by_name,
+        (SELECT COUNT(1) FROM paper_question pq WHERE pq.paper_id = p.id) AS question_count,
+        p.create_time, p.update_time
+    </sql>
+
+    <sql id="PaperWhere">
+        WHERE 1 = 1
+        <if test="query.keyword != null and query.keyword != ''">
+            AND p.paper_name LIKE CONCAT('%', #{query.keyword}, '%')
+        </if>
+        <if test="query.status != null">
+            AND p.status = #{query.status}
+        </if>
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO exam_system.paper (
+            paper_name, duration, total_score, pass_score, start_time, end_time, status, create_by
+        ) VALUES (
+            #{paperName}, #{duration}, #{totalScore}, #{passScore}, #{startTime}, #{endTime}, #{status}, #{createBy}
+        )
+    </insert>
+
+    <select id="selectById" resultMap="PaperMap">
+        SELECT id, paper_name, duration, total_score, pass_score, start_time, end_time,
+               status, create_by, create_time, update_time
+        FROM exam_system.paper
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectDetailById" resultMap="PaperVOMap">
+        SELECT <include refid="PaperColumns"/>
+        FROM exam_system.paper p
+        JOIN exam_system.sys_user u ON p.create_by = u.id
+        WHERE p.id = #{id}
+    </select>
+
+    <select id="countByQuery" resultType="long">
+        SELECT COUNT(1)
+        FROM exam_system.paper p
+        <include refid="PaperWhere"/>
+    </select>
+
+    <select id="selectPage" resultMap="PaperVOMap">
+        SELECT <include refid="PaperColumns"/>
+        FROM exam_system.paper p
+        JOIN exam_system.sys_user u ON p.create_by = u.id
+        <include refid="PaperWhere"/>
+        ORDER BY p.create_time DESC, p.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <insert id="insertPaperQuestion">
+        INSERT INTO exam_system.paper_question (paper_id, question_id, question_score, sort_order)
+        VALUES (#{paperId}, #{questionId}, #{questionScore}, #{sortOrder})
+    </insert>
+
+    <update id="updatePaperQuestionScore">
+        UPDATE exam_system.paper_question
+        SET question_score = #{questionScore}
+        WHERE paper_id = #{paperId}
+          AND question_id = #{questionId}
+    </update>
+
+    <delete id="deletePaperQuestion">
+        DELETE FROM exam_system.paper_question
+        WHERE paper_id = #{paperId}
+          AND question_id = #{questionId}
+    </delete>
+
+    <select id="selectQuestionsByPaperId" resultMap="PaperQuestionVOMap">
+        SELECT pq.id, pq.paper_id, pq.question_id, q.question_type, q.title,
+               q.option_a, q.option_b, q.option_c, q.option_d,
+               q.correct_answer, q.analysis, pq.question_score, pq.sort_order,
+               q.difficulty, q.knowledge_point
+        FROM exam_system.paper_question pq
+        JOIN exam_system.question q ON pq.question_id = q.id
+        WHERE pq.paper_id = #{paperId}
+          AND q.status = 1
+        ORDER BY pq.sort_order ASC, pq.id ASC
+    </select>
+
+    <select id="countQuestions" resultType="int">
+        SELECT COUNT(1)
+        FROM exam_system.paper_question
+        WHERE paper_id = #{paperId}
+    </select>
+
+    <select id="sumQuestionScore" resultType="int">
+        SELECT COALESCE(SUM(question_score), 0)
+        FROM exam_system.paper_question
+        WHERE paper_id = #{paperId}
+    </select>
+
+    <update id="publish">
+        UPDATE exam_system.paper
+        SET status = 1,
+            total_score = #{totalScore},
+            pass_score = #{passScore}
+        WHERE id = #{paperId}
+          AND status = 0
+    </update>
+</mapper>

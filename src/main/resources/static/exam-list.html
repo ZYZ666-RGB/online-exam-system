@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>参加考试</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("exams");
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>可参加考试</h1><p class="muted">进入考试后系统会生成考试记录。</p></div>
+    <section class="panel">
+        <table><thead><tr><th>试卷</th><th>时长</th><th>总分</th><th>及格分</th><th>考试时间</th><th>状态</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+`;
+
+async function loadExams() {
+    const rows = await request("/exams/available");
+    document.getElementById("rows").innerHTML = rows.map(e => `
+        <tr>
+            <td>${escapeHtml(e.paperName)}</td><td>${e.duration}分钟</td><td>${e.totalScore}</td><td>${e.passScore}</td>
+            <td>${escapeHtml(e.startTime)}<br>${escapeHtml(e.endTime)}</td>
+            <td><span class="pill ${e.examStatus === 1 ? "success" : e.examId ? "warning" : ""}">${e.examStatus === 1 ? "已提交" : e.examId ? "进行中" : "未开始"}</span></td>
+            <td><button onclick="startExam(${e.paperId})" ${e.examStatus === 1 ? "disabled" : ""}>开始/继续</button></td>
+        </tr>
+    `).join("");
+}
+
+async function startExam(paperId) {
+    const examId = await request(`/exams/${paperId}/start`, { method: "POST" });
+    location.href = `exam-do.html?id=${examId}`;
+}
+
+loadExams();
+</script>
+</body>
+</html>

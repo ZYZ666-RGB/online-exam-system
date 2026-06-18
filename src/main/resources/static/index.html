@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 在线考试系统</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-page login-page">
+<main class="login-shell">
+    <section class="login-visual" aria-label="系统概览">
+        <div class="login-brand">课程设计 · 在线考试</div>
+        <h1>让考试安排、在线答题和成绩分析更清晰</h1>
+        <p>面向管理员、教师和学生的在线考试系统，覆盖题库维护、试卷发布、答题提交和成绩统计。</p>
+
+        <div class="exam-preview">
+            <div class="preview-head">
+                <span>今日考试</span>
+                <strong>数据库原理模拟测验</strong>
+                <span class="pill success">进行中</span>
+            </div>
+            <div class="preview-grid">
+                <div><strong>45</strong><span>题目</span></div>
+                <div><strong>90</strong><span>分钟</span></div>
+                <div><strong>100</strong><span>总分</span></div>
+            </div>
+            <div class="paper-lines">
+                <span style="width: 92%"></span>
+                <span style="width: 76%"></span>
+                <span style="width: 84%"></span>
+            </div>
+            <div class="score-strip">
+                <span>自动判分</span>
+                <span>错题沉淀</span>
+                <span>统计分析</span>
+            </div>
+        </div>
+
+        <div class="login-stats">
+            <div><strong>3</strong><span>角色入口</span></div>
+            <div><strong>8+</strong><span>核心模块</span></div>
+            <div><strong>JWT</strong><span>登录验证</span></div>
+        </div>
+    </section>
+
+    <section class="auth-panel login-panel">
+        <div class="auth-kicker">欢迎回来</div>
+        <h2>登录系统</h2>
+        <p class="muted">测试账号：admin / teacher01 / student01，密码均为 123456。</p>
+        <div class="form-row">
+            <label>用户名</label>
+            <input id="username" value="teacher01" autocomplete="username">
+        </div>
+        <div class="form-row">
+            <label>密码</label>
+            <input id="password" type="password" value="123456" autocomplete="current-password">
+        </div>
+        <div id="status" class="status"></div>
+        <div class="auth-actions">
+            <button onclick="login()">登录</button>
+            <a class="button secondary" href="register.html">注册学生账号</a>
+        </div>
+    </section>
+</main>
+<script src="js/api.js"></script>
+<script>
+document.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter" || event.isComposing) return;
+    if (!event.target || event.target.tagName !== "INPUT") return;
+    event.preventDefault();
+    login();
+});
+
+async function login() {
+    try {
+        localStorage.removeItem("apiBase");
+        const data = await request("/auth/login", {
+            method: "POST",
+            body: JSON.stringify({
+                username: document.getElementById("username").value,
+                password: document.getElementById("password").value
+            })
+        });
+        saveSession(data);
+        setStatus("登录成功，正在进入系统");
+        redirectByRole();
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+</script>
+</body>
+</html>

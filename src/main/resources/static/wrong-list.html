@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>错题本</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("wrong");
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>错题本</h1><p class="muted">错题来自 wrong_question 表，并关联题目、考试记录和试卷。</p></div>
+    <section class="panel"><div id="rows"></div></section>
+`;
+
+async function loadWrong() {
+    const rows = await request("/wrong-questions");
+    document.getElementById("rows").innerHTML = rows.map((q, index) => `
+        <div class="question-block">
+            <strong>${index + 1}. ${escapeHtml(q.title)}</strong>
+            <p class="muted">试卷：${escapeHtml(q.paperName)} ｜ 错误时间：${escapeHtml(q.createTime)}</p>
+            <p>A. ${escapeHtml(q.optionA)}<br>B. ${escapeHtml(q.optionB)}<br>C. ${escapeHtml(q.optionC)}<br>D. ${escapeHtml(q.optionD)}</p>
+            <p>我的答案：${escapeHtml(q.studentAnswer)} ｜ 正确答案：${escapeHtml(q.correctAnswer)}</p>
+            <p>解析：${escapeHtml(q.analysis)}</p>
+        </div>
+    `).join("");
+}
+
+loadWrong();
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题库管理</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("questions");
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>题库管理</h1><p class="muted">题目数据全部来自 question 表，删除采用逻辑删除。</p></div>
+    <section class="panel">
+        <div class="toolbar">
+            <div class="form-row"><label>题型</label><select id="questionType"><option value="">全部</option><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option></select></div>
+            <div class="form-row"><label>难度</label><select id="difficulty"><option value="">全部</option><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select></div>
+            <div class="form-row"><label>知识点</label><input id="knowledgePoint"></div>
+            <button onclick="loadQuestions()">查询</button>
+            <a class="button" href="question-add.html">新增题目</a>
+        </div>
+        <div id="status" class="status"></div>
+        <table>
+            <thead><tr><th>ID</th><th>题型</th><th>题干</th><th>答案</th><th>难度</th><th>知识点</th><th>操作</th></tr></thead>
+            <tbody id="rows"></tbody>
+        </table>
+    </section>
+`;
+
+async function loadQuestions() {
+    try {
+        const data = await request("/questions" + qs({
+            questionType: document.getElementById("questionType").value,
+            difficulty: document.getElementById("difficulty").value,
+            knowledgePoint: document.getElementById("knowledgePoint").value,
+            pageSize: 50
+        }));
+        document.getElementById("rows").innerHTML = data.records.map(q => `
+            <tr>
+                <td>${q.id}</td><td><span class="pill">${q.questionType}</span></td><td>${escapeHtml(q.title)}</td>
+                <td>${escapeHtml(q.correctAnswer)}</td><td><span class="pill ${q.difficulty === "hard" ? "danger" : q.difficulty === "medium" ? "warning" : "success"}">${q.difficulty}</span></td><td>${escapeHtml(q.knowledgePoint)}</td>
+                <td class="actions">
+                    <a class="button secondary" href="question-add.html?id=${q.id}">编辑</a>
+                    <button class="danger" onclick="deleteQuestion(${q.id})">删除</button>
+                </td>
+            </tr>
+        `).join("");
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+
+async function deleteQuestion(id) {
+    if (!confirm("确认逻辑删除该题目？")) return;
+    await request(`/questions/${id}`, { method: "DELETE" });
+    loadQuestions();
+}
+
+loadQuestions();
+</script>
+</body>
+</html>

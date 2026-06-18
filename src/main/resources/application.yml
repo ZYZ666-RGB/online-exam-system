@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: exam-system
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/exam_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 3000ms
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.example.exam.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+exam:
+  auth:
+    jwt-secret: "exam-system-course-design-secret-key-change-me"
+    token-expire-minutes: 120
+    token-prefix: "Bearer "
+    redis-token-prefix: "exam:login:token:"
+    login-fail-prefix: "exam:login:fail:"
+    register-limit-prefix: "exam:register:limit:"
+  register:
+    default-role: STUDENT
+

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成绩统计</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("statistics");
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>成绩统计</h1><p class="muted">按试卷查询参加人数、平均分、最高分、最低分。</p></div>
+    <section class="panel">
+        <div class="toolbar">
+            <div class="form-row"><label>试卷</label><select id="paperSelect"></select></div>
+            <button onclick="loadStats()">查询统计</button>
+        </div>
+        <div id="stats" class="cards"></div>
+        <table><thead><tr><th>学生</th><th>用户名</th><th>得分</th><th>是否及格</th><th>开始时间</th><th>提交时间</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+`;
+
+async function loadPapers() {
+    const data = await request("/papers" + qs({ status: 1, pageSize: 100 }));
+    document.getElementById("paperSelect").innerHTML = data.records.map(p => `<option value="${p.id}">${escapeHtml(p.paperName)}</option>`).join("");
+    if (data.records.length) loadStats();
+}
+
+async function loadStats() {
+    const paperId = document.getElementById("paperSelect").value;
+    if (!paperId) return;
+    const stat = await request(`/statistics/paper/${paperId}`);
+    const records = await request(`/statistics/paper/${paperId}/records`);
+    document.getElementById("stats").innerHTML = `
+        <div class="card"><h3>${stat.participantCount}</h3><p class="muted">参加人数</p></div>
+        <div class="card"><h3>${stat.averageScore}</h3><p class="muted">平均分</p></div>
+        <div class="card"><h3>${stat.highestScore}</h3><p class="muted">最高分</p></div>
+        <div class="card"><h3>${stat.lowestScore}</h3><p class="muted">最低分</p></div>
+    `;
+    document.getElementById("rows").innerHTML = records.map(r => `
+        <tr><td>${escapeHtml(r.studentName)}</td><td>${escapeHtml(r.username)}</td><td>${r.totalScore}</td><td><span class="pill ${r.isPass === 1 ? "success" : "danger"}">${r.isPass === 1 ? "及格" : "未及格"}</span></td><td>${escapeHtml(r.startTime)}</td><td>${escapeHtml(r.submitTime)}</td></tr>
+    `).join("");
+}
+
+loadPapers();
+</script>
+</body>
+</html>

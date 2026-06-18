@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建试卷</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/api.js"></script>
+<script>
+renderShell("papers");
+document.getElementById("app").innerHTML = `
+    <div class="page-title"><h1>创建试卷</h1><p class="muted">总分在发布时按题目分值自动汇总。</p></div>
+    <section class="panel">
+        <div class="form-grid">
+            <div class="form-row"><label>试卷名称</label><input id="paperName"></div>
+            <div class="form-row"><label>考试时长（分钟）</label><input id="duration" type="number" value="60"></div>
+            <div class="form-row"><label>及格分</label><input id="passScore" type="number" value="60"></div>
+            <div class="form-row"><label>开始时间</label><input id="startTime" type="datetime-local"></div>
+            <div class="form-row"><label>结束时间</label><input id="endTime" type="datetime-local"></div>
+        </div>
+        <div id="status" class="status"></div>
+        <button onclick="createPaper()">创建</button>
+        <a class="button secondary" href="paper-list.html">返回</a>
+    </section>
+`;
+
+async function createPaper() {
+    try {
+        const id = await request("/papers", {
+            method: "POST",
+            body: JSON.stringify({
+                paperName: document.getElementById("paperName").value,
+                duration: Number(document.getElementById("duration").value),
+                passScore: Number(document.getElementById("passScore").value),
+                startTime: document.getElementById("startTime").value,
+                endTime: document.getElementById("endTime").value
+            })
+        });
+        location.href = `paper-question.html?id=${id}`;
+    } catch (e) {
+        setStatus(e.message, false);
+    }
+}
+</script>
+</body>
+</html>
